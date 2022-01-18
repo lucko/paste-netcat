@@ -131,5 +131,9 @@ func post(body io.Reader, ipAddr string) (string, error) {
 
 	_ = resp.Body.Close()
 
+	if resp.StatusCode != 201 {
+		return "", fmt.Errorf("invalid response code %v", resp.StatusCode)
+	}
+
 	return resp.Header.Get("Location"), nil
 }
