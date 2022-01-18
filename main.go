@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -71,6 +72,12 @@ func process(conn net.Conn) {
 	// set a 30-second timeout for this connection
 	_ = conn.SetDeadline(time.Now().Add(time.Second * 30))
 
+	// parse remote ip address
+	ipAddr := conn.RemoteAddr().String()
+	if strings.Contains(ipAddr, ":") {
+		ipAddr = strings.Split(ipAddr, ":")[0]
+	}
+
 	// create a gzip-wrapped buffer to read content into
 	var buf bytes.Buffer
 	writer := gzip.NewWriter(&buf)
@@ -78,21 +85,21 @@ func process(conn net.Conn) {
 	// copy from the connection -> buf (and apply gzip compression)
 	_, err := io.Copy(writer, conn)
 	if err != nil {
-		fmt.Printf("error reading from connection %s: %s\n", conn.RemoteAddr().String(), err)
+		fmt.Printf("error reading from connection %s: %s\n", ipAddr, err)
 		return
 	}
 
 	// flush+close the writer
 	err = writer.Close()
 	if err != nil {
-		fmt.Printf("error reading from connection %s: %s\n", conn.RemoteAddr().String(), err)
+		fmt.Printf("error reading from connection %s: %s\n", ipAddr, err)
 		return
 	}
 
 	// perform an HTTP post request to the paste API to upload the content
-	code, err := post(&buf, conn.RemoteAddr().String())
+	code, err := post(&buf, ipAddr)
 	if err != nil {
-		fmt.Printf("error uploading content from %s: %s\n", conn.RemoteAddr().String(), err)
+		fmt.Printf("error uploading content from %s: %s\n", ipAddr, err)
 		_, _ = fmt.Fprintln(conn, "error uploading")
 		return
 	}
@@ -100,11 +107,11 @@ func process(conn net.Conn) {
 	// reply via the socket with the URL
 	_, err = fmt.Fprintf(conn, "%s%s\n", frontendUrl, code)
 	if err != nil {
-		fmt.Printf("error writing response to connection %s: %s\n", conn.RemoteAddr().String(), err)
+		fmt.Printf("error writing response to connection %s: %s\n", ipAddr, err)
 		return
 	}
 
-	fmt.Printf("processed %s -> %s\n", conn.RemoteAddr().String(), code)
+	fmt.Printf("processed %s -> %s\n", ipAddr, code)
 }
 
 // Posts compressed content to the paste (Bytebin) API

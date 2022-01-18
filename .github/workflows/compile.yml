@@ -3,7 +3,7 @@ name: Compile Binaries
 on: [pull_request, push]
 
 jobs:
-  build-image:
+  compile:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
