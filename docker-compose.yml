@@ -1,0 +1,24 @@
+version: "3.8"
+
+services:
+  paste-netcat:
+    image: ghcr.io/lucko/paste-netcat
+    ports:
+      - "3000:3000"
+    environment:
+      # The port that the app will bind to (within the container)
+      PN_PORT: 3000
+      # The API to post content to
+      # It is expected that this is a bytebin instance
+      PN_API_POST_URL: "https://api.pastes.dev/post"
+      # The user agent used in http requests to the API
+      PN_USER_AGENT: "paste-netcat"
+      # The API key to use in http requests to the API
+      # This ensures that rate limits are applied to the client IP
+      # address and not the host of paste-netcat.
+      PN_API_KEY: example
+      # The content type to use for submitted content
+      PN_POST_CONTENT_TYPE: "text/plain"
+      # The url of the frontend - the "key" of the paste will be
+      # appended to this and returned to the client after upload
+      PN_FRONTEND_URL: "https://pastes.dev/"
