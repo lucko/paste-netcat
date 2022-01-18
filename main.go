@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"compress/gzip"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -83,16 +84,34 @@ func process(conn net.Conn) {
 	writer := gzip.NewWriter(&buf)
 
 	// copy from the connection -> buf (and apply gzip compression)
-	_, err := io.Copy(writer, conn)
+	iterations := 0
+	var totalWritten int64 = 0
+	for {
+		_ = conn.SetReadDeadline(time.Now().Add(time.Millisecond * 200))
+		written, err := io.Copy(writer, conn)
+		totalWritten += written
+		iterations++
+
+		// continue reading while: data is being written or nothing has been written yet, up to 5 iters
+		if err != nil && errors.Is(err, os.ErrDeadlineExceeded) && (written > 0 || (totalWritten == 0 && iterations < 5)) {
+			continue
+		}
+
+		break
+	}
+
+	_ = conn.SetDeadline(time.Now().Add(time.Second * 30))
+
+	// flush+close the writer
+	err := writer.Close()
 	if err != nil {
 		fmt.Printf("error reading from connection %s: %s\n", ipAddr, err)
 		return
 	}
 
-	// flush+close the writer
-	err = writer.Close()
-	if err != nil {
-		fmt.Printf("error reading from connection %s: %s\n", ipAddr, err)
+	if totalWritten == 0 {
+		fmt.Printf("no content from %s\n", ipAddr)
+		_, _ = fmt.Fprintln(conn, "no content received!")
 		return
 	}
 
