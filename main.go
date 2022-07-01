@@ -115,6 +115,12 @@ func process(conn net.Conn) {
 		return
 	}
 
+	if totalWritten < 100 {
+		fmt.Printf("possible spam from %s\n", ipAddr)
+		_, _ = fmt.Fprintln(conn, "request not ok")
+		return
+	}
+
 	// perform an HTTP post request to the paste API to upload the content
 	code, err := post(&buf, ipAddr)
 	if err != nil {
